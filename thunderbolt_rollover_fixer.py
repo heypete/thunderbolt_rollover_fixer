@@ -273,19 +273,25 @@ def main():
     # Argument parser setup
     parser = argparse.ArgumentParser(description="Stream raw serial data to TCP and relay valid TCP data to the serial port.")
     parser.add_argument(
-        "port", nargs="?", default="COM1", help="The serial port to listen on (default: COM11)."
+        "port",
+        nargs="?",
+        default="COM1",
+        help="The serial port to listen on (default: COM11)."
     )
     parser.add_argument(
-        "--baudrate", type=int, default=9600, help="Baudrate for the serial port (default: 9600)."
+        "--baudrate", "-b",
+        type=int,
+        default=9600,
+        help="Baudrate for the serial port (default: 9600)."
     )
     parser.add_argument(
-        "--rollovers",
+        "--rollovers", "-r",
         type=int,
         default=0,
-        help="The number of GPS week rollovers to apply (default: 0).",
+        help="The number of GPS week rollovers since the GPS epoch. (default: 0).",
     )
     parser.add_argument(
-        "--tcp-port",
+        "--tcp-port", "-tp",
         type=int,
         default=25000,
         help="The TCP port to use for the server (default: 25000).",
