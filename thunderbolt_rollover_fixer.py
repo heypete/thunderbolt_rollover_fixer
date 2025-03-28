@@ -25,6 +25,23 @@ TCP_PORT_BINARY = 25000  # TCP server port for binary format
 
 clients_binary = []  # List to keep track of binary stream clients
 
+def calculate_gps_rollovers():
+    # GPS epoch start time
+    gps_epoch = datetime(1980, 1, 6, 0, 0, 0)
+
+    # Get the current system time
+    current_time = datetime.now()
+
+    # Calculate the number of weeks since the GPS epoch
+    elapsed_time = current_time - gps_epoch
+    elapsed_weeks = elapsed_time.days // 7
+
+    # Calculate the number of rollovers (1024 weeks per rollover)
+    rollovers = elapsed_weeks // 1024
+
+    return rollovers
+
+
 def remove_stuffed_dle(data):
     """Remove stuffed DLE bytes from the data."""
     cleaned_data = bytearray()
@@ -267,33 +284,34 @@ def handle_client(client_socket, ser):
 
 def main():
     # Argument parser setup
-    parser = argparse.ArgumentParser(description="Stream raw serial data to TCP and relay valid TCP data to the serial port.")
+    parser = argparse.ArgumentParser(description="Stream raw serial data to TCP and relay valid TCP data to the serial port.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    
     parser.add_argument(
         "port",
         nargs="?",
         default="COM1",
-        help="The serial port to listen on (default: COM11)."
+        help="The serial port to listen on."
     )
     parser.add_argument(
         "--baudrate", "-b",
         type=int,
         default=9600,
-        help="Baudrate for the serial port (default: 9600)."
+        help="Baudrate for the serial port."
     )
     parser.add_argument(
         "--rollovers", "-r",
         type=int,
-        default=0,
-        help="The number of GPS week rollovers since the GPS epoch. (default: 0).",
+        default=calculate_gps_rollovers(),
+        help="The number of GPS week rollovers since the GPS epoch.).",
     )
     parser.add_argument(
         "--tcp-port", "-tp",
         type=int,
         default=25000,
-        help="The TCP port to use for the server (default: 25000).",
+        help="The TCP port to use for the server.",
     )
     args = parser.parse_args()
-
+   
     port = args.port
     baudrate = args.baudrate
     rollovers = args.rollovers
