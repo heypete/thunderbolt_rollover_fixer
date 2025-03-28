@@ -15,7 +15,6 @@ import argparse
 import socket
 import threading
 from datetime import datetime, timedelta
-import pytz  # If you don't already have this, you'll need to install it with `pip install pytz`
 
 # Constants
 DLE = 0x10  # DLE byte
@@ -100,9 +99,6 @@ def print_information(original_packet=None, cleaned_data=None, modified_packet=N
 
     utc_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
     print(f"UTC Time (system):       {utc_time}")
-
-    local_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
-    print(f"Local Time (system):     {local_time}")
 
     if original_packet is not None:
         print(f"Original Packet (hex):   {bytes_to_hex_string(original_packet)}")
