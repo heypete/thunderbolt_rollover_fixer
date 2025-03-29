@@ -49,12 +49,12 @@ def remove_stuffed_dle(data):
 
     for byte in data:
         if skip_next:
-            # If we are skipping the current byte, reset the flag and continue
+            # If we are skipping the current byte, reset the flag and continue.
             skip_next = False
             continue
 
         if byte == DLE:  # Check if the current byte is DLE (0x10)
-            # If the next byte is also DLE, skip the first and add the second
+            # If the next byte is also DLE, add one but skip the other.
             skip_next = True
             cleaned_data.append(byte)
         else:
