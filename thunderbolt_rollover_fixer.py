@@ -14,6 +14,7 @@ import struct
 import argparse
 import socket
 import threading
+import select
 from datetime import datetime, timedelta
 
 # Constants
@@ -23,7 +24,7 @@ PRIMARY_TIMING_IDENTIFIER = [0x8F, 0xAB]  # Identifier for the primary timing pa
 GPS_EPOCH = datetime(1980, 1, 6)  # GPS time begins on January 6, 1980
 TCP_PORT_BINARY = 25000  # TCP server port for binary format
 
-clients_binary = []  # List to keep track of binary stream clients
+clients = []  # Global list to keep track of all sockets (server and clients).
 
 def calculate_gps_rollovers():
     # GPS epoch start time
@@ -161,14 +162,14 @@ def modify_primary_timing_packet(packet, final_gps_week, year, month, day, hour,
 
 def broadcast_data(data):
     """Send raw serial data to all connected TCP clients."""
-    # Send data to all connected TCP clients
-    for client_socket in clients_binary:
+    # Skip the server socket (always the first position in clients[]).
+    for client_socket in clients[1:]:  
         try:
-            client_socket.sendall(data)  # Send data to the client
+            client_socket.sendall(data)  # Send data to the client.
         except socket.error:
-            # If sending fails, remove the client from the list
-            clients_binary.remove(client_socket)
+            # If sending fails, remove the client from the list.
             print(f"Client {client_socket.getpeername()} disconnected and removed.")
+            clients.remove(client_socket)
 
 
 def extract_date_and_time(payload, final_gps_week):
@@ -248,36 +249,63 @@ def process_packet(packet, rollovers):
 def start_tcp_server(port, ser):
     """Start a TCP server to handle clients and forward their valid data to the serial port."""
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind(("0.0.0.0", port))
     server.listen(5)  # Allow up to 5 pending connections
+    server.setblocking(False)  # Set server to non-blocking mode
     print(f"TCP server listening on port {port}...")
-
+    
+    clients.append(server)
+    
+    
     try:
         while True:
-            client_socket, addr = server.accept()
-            client_handler = threading.Thread(target=handle_client, args=(client_socket, ser))
-            client_handler.daemon = True
-            client_handler.start()
+            # Use selects to identify which sockets are ready for I/O operations and skips those which aren't ready.
+            # Readable: Sockets where data is available and ready to be read (e.g. incoming client connections).
+            # Writeable: (not used) Sockets ready to send data. Not used because client_socket.sendall() in broadcast_data is synchronous and doesn't require monitoring for writability.  
+            # Exceptions: Sockets with an error that needs handling.
+            readable, _, exceptions = select.select(clients, [], clients)
+
+            for s in readable:
+                if s is server:
+                    # Accept new client connections
+                    client_socket, addr = server.accept()
+                    print(f"Client connected: {addr}")
+                    client_socket.setblocking(False)
+                    clients.append(client_socket)
+                else:
+                    # Handle data from existing clients
+                    handle_client(s, ser)
+
+            # Handle exceptions
+            for s in exceptions:
+                print(f"Handling exception for {s.getpeername()}")
+                clients.remove(s)
+                s.close()
     except KeyboardInterrupt:
         print(f"\nShutting down TCP server on port {port}.")
     finally:
         server.close()
+        
+        
+        
 
 def handle_client(client_socket, ser):
     """Handle client connections by adding them to the client list and relaying incoming data."""
     try:
-        print(f"Client connected: {client_socket.getpeername()}")
-        clients_binary.append(client_socket)
-        while True:
+        tcp_data = client_socket.recv(1024)
+        if tcp_data:
             # Relay incoming TCP data to the serial port
-            tcp_data = client_socket.recv(1024)
-            if tcp_data:
-                ser.write(tcp_data)
+            ser.write(tcp_data)
+        else:
+            # Client disconnected
+            print(f"Client disconnected: {client_socket.getpeername()}")
+            clients.remove(client_socket)
+            client_socket.close()
     except socket.error as e:
-        print(f"Client disconnected: {e}")
-    finally:
-        if client_socket in clients_binary:
-            clients_binary.remove(client_socket)
+        print(f"Socket error: {e}")
+        if client_socket in clients:
+            clients.remove(client_socket)
         client_socket.close()
 
 
