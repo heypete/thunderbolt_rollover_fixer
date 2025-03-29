@@ -264,7 +264,8 @@ def start_tcp_server(port, ser):
             # Readable: Sockets where data is available and ready to be read (e.g. incoming client connections).
             # Writeable: (not used) Sockets ready to send data. Not used because client_socket.sendall() in broadcast_data is synchronous and doesn't require monitoring for writability.  
             # Exceptions: Sockets with an error that needs handling.
-            readable, _, exceptions = select.select(clients, [], clients)
+            # Use a 10 second timeout.
+            readable, _, exceptions = select.select(clients, [], clients, 10)
 
             for s in readable:
                 if s is server:
