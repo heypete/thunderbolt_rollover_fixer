@@ -340,10 +340,11 @@ def main():
     )
     args = parser.parse_args()
    
+    # Get various values from command line arguements.
     port = args.port
     baudrate = args.baudrate
     rollovers = args.rollovers
-    tcp_port = args.tcp_port  # Get the TCP port from command-line arguments
+    tcp_port = args.tcp_port
 
     try:
         # Open the primary serial port (e.g., COM1 or /dev/ttyS1)
