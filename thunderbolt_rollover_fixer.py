@@ -340,7 +340,7 @@ def main():
     )
     args = parser.parse_args()
    
-    # Get various values from command line arguements.
+    # Get various values from command line arguments.
     port = args.port
     baudrate = args.baudrate
     rollovers = args.rollovers
